@@ -1,5 +1,6 @@
 const axios = require("axios");
 const FormData = require("form-data");
+const mime = require("mime");
 
 class ChatwootClient {
   static locks = {};
@@ -33,6 +34,7 @@ class ChatwootClient {
       });
       return response.data;
     } catch (error) {
+      console.error("Error details:", error.response?.data || error.message);
       throw new Error(error.message);
     }
   }
@@ -64,7 +66,8 @@ class ChatwootClient {
     if (!contact) {
       throw new Error("No user found for the given phone number.");
     }
-    return contact.custom_attributes;
+    const attributeValue = contact.custom_attributes.funciones_del_bot;
+    return String(attributeValue);
   }
 
   /**
@@ -210,7 +213,10 @@ class ChatwootClient {
       responseType: "stream",
       headers: headers,
     });
-    return response.data;
+    return {
+      dataStream: response.data,
+      contentType: response.headers["content-type"],
+    };
   }
 
   /**
@@ -241,9 +247,19 @@ class ChatwootClient {
 
     // Descargar y agregar archivos adjuntos si se proporcionan URLs
     for (let url of fileUrls) {
-      const fileStream = await this._downloadFile(url, token);
-      const fileName = url.split("/").pop(); // Extrae el nombre del archivo desde la URL
-      form.append("attachments[]", fileStream, { filename: fileName });
+      const fileResult = await this._downloadFile(url, token);
+
+      const fileExtension = mime.getExtension(fileResult.contentType);
+
+      if (fileExtension) {
+        const fileName = `Documento.${fileExtension}`;
+        form.append("attachments[]", fileResult.dataStream, {
+          filename: fileName,
+        });
+      } else {
+        // Manejar el caso en el que no puedas determinar la extensión.
+        console.error(`No se pudo determinar la extensión para la URL: ${url}`);
+      }
     }
 
     // Agregar el tipo de mensaje y si es privado

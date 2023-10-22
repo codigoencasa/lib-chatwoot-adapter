@@ -16,6 +16,7 @@
     "axios": "^1.2.1",
     "body-parser": "^1.20.1",
     "form-data": "^4.0.0",
+    "mime": "^3.0.0",
     "polka": "^0.5.2",
     "queue-promise": "^2.2.1"
   },
