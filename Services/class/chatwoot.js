@@ -1,9 +1,14 @@
 const axios = require("axios");
 const FormData = require("form-data");
+const Queue = require("queue-promise");
 const mime = require("mime");
 
 class ChatwootClient {
   static locks = {};
+  static queue = new Queue({
+    concurrent: 1,
+    interval: 100,
+  });
 
   /**
    * Constructor para inicializar el cliente de Chatwoot.
@@ -17,26 +22,50 @@ class ChatwootClient {
   }
 
   /**
-   * Realiza una solicitud HTTP a la API de Chatwoot.
-   * @param {string} endpoint - Endpoint de la API.
-   * @param {Object} options - Opciones para la solicitud HTTP.
+   * Enfila la solicitud HTTP en la cola y espera su procesamiento.
+   *
+   * @param {string} endpoint - El endpoint de la API a llamar.
+   * @param {Object} [options={}] - Opciones adicionales para la petición axios.
+   * @returns {Promise<Object>} Resuelve con la respuesta de la API o rechaza con un error.
+   */
+  async _enqueueRequest(endpoint, options = {}) {
+    return new Promise((resolve, reject) => {
+      // Añade una función asincrónica a la cola.
+      // Esta función realiza la solicitud HTTP y resuelve o rechaza la promesa externa.
+      ChatwootClient.queue.enqueue(async () => {
+        try {
+          const response = await axios({
+            ...options,
+            url: `${this.chatwootURL}/${this.idChatwoot}${endpoint}`,
+            headers: {
+              api_access_token: this.apiAccessToken,
+              "Content-Type": "application/json",
+              ...options.headers,
+            },
+          });
+          resolve(response.data);
+        } catch (error) {
+          // Loguea el error y rechaza la promesa externa con el mensaje de error.
+          console.error(
+            "Error details:",
+            error.response?.data || error.message
+          );
+          reject(new Error(error.message));
+        }
+      });
+    });
+  }
+
+  /**
+   * Realiza una solicitud HTTP al servidor de Chatwoot.
+   *
+   * @param {string} endpoint - El endpoint de la API a llamar.
+   * @param {Object} [options={}] - Opciones adicionales para la petición axios.
+   * @returns {Promise<Object>} Resuelve con la respuesta de la API o rechaza con un error.
    */
   async _request(endpoint, options = {}) {
-    try {
-      const response = await axios({
-        ...options,
-        url: `${this.chatwootURL}/${this.idChatwoot}${endpoint}`,
-        headers: {
-          api_access_token: this.apiAccessToken,
-          "Content-Type": "application/json",
-          ...options.headers,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error details:", error.response?.data || error.message);
-      throw new Error(error.message);
-    }
+    // Encola la petición y espera su procesamiento.
+    return this._enqueueRequest(endpoint, options);
   }
 
   /**
@@ -64,9 +93,16 @@ class ChatwootClient {
     });
     const contact = data.payload[0];
     if (!contact) {
-      throw new Error("No user found for the given phone number.");
+      return false;
+    }
+    if (
+      !contact.custom_attributes ||
+      !contact.custom_attributes.funciones_del_bot
+    ) {
+      return false;
     }
     const attributeValue = contact.custom_attributes.funciones_del_bot;
+
     return String(attributeValue);
   }
 
@@ -103,6 +139,58 @@ class ChatwootClient {
   }
 
   /**
+   * Verifica si el atributo personalizado "Funciones del Bot" ya está creado en la cuenta especificada.
+   *
+   * @param {integer} account_id - El ID numérico de la cuenta donde se verificará la existencia del atributo.
+   * @returns {boolean} - Retorna true si el atributo ya existe, de lo contrario, retorna false.
+   */
+  async isAttributeCreated() {
+    const targetAttributeKey = "funciones_del_bot";
+
+    const response = await this._request(`/custom_attribute_definitions`, {
+      method: "GET",
+    });
+
+    if (response && response.length > 0) {
+      for (let attribute of response) {
+        if (attribute.attribute_key === targetAttributeKey) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Crea un nuevo atributo personalizado en la cuenta especificada.
+   *
+   * El atributo creado se denomina "Funciones del Bot" y es de tipo lista con
+   * los valores "On" y "Off". Está destinado a actuar como un control para
+   * las funciones del bot.
+   *
+   * @param {integer} account_id - El ID numérico de la cuenta donde se creará el atributo.
+   * @returns {object} - Retorna la respuesta del servidor, que puede incluir detalles del atributo creado.
+   */
+  async createAttributes() {
+    const data = {
+      attribute_display_name: "Funciones del Bot", // Nombre visible del atributo.
+      attribute_display_type: 6, // Tipo de visualización: Lista.
+      attribute_description: "Control para las funciones del bot", // Descripción del atributo.
+      attribute_key: "funciones_del_bot", // Clave única para el atributo.
+      attribute_values: ["On", "Off"], // Posibles valores para el atributo.
+      attribute_model: 1, // Tipo de modelo: Contacto.
+    };
+
+    const response = await this._request(`/custom_attribute_definitions`, {
+      method: "POST",
+      data: data,
+    });
+
+    return response;
+  }
+
+  /**
    * Crea un nuevo contacto en Chatwoot.
    * @param {string} name - Nombre del contacto.
    * @param {string} phoneNumber - Número de teléfono del contacto.
@@ -123,7 +211,7 @@ class ChatwootClient {
       data: data,
     });
 
-    return response.payload.contact.id; // Retornar solo el ID del contacto creado.
+    return response.payload.contact.id;
   }
 
   /**
@@ -146,7 +234,6 @@ class ChatwootClient {
       data: data,
     });
 
-    // Retorna el ID de la nueva conversación creada.
     return response.id;
   }
 
@@ -164,6 +251,18 @@ class ChatwootClient {
     let userID = await this.getUserID(userPhone);
     if (!userID) {
       userID = await this.createContact(name, userPhone);
+      await new Promise((r) => setTimeout(r, 100));
+      const getAttributes = await this.getAttributes(userPhone);
+      if (!getAttributes) {
+        const result = await this.setAttributes(
+          userPhone,
+          "funciones_del_bot",
+          "On"
+        );
+        if (result) {
+          console.log("Atributo actualizado con éxito.");
+        }
+      }
     }
 
     let conversation_id = await this.getConversationID(userID);
@@ -179,8 +278,6 @@ class ChatwootClient {
 
         const sourceID = "someUniqueValue"; // Aquí, debes decidir cómo determinar el 'sourceID'. Podría ser el userID u otro valor único.
         conversation_id = await this.createNewConversation(sourceID, userID);
-
-        // Libera el bloqueo
         ChatwootClient.locks[userPhone] = false;
       }
     }
@@ -240,12 +337,10 @@ class ChatwootClient {
 
     const form = new FormData();
 
-    // Agregar el contenido textual del mensaje si se proporciona
     if (mensaje) {
       form.append("content", mensaje);
     }
 
-    // Descargar y agregar archivos adjuntos si se proporcionan URLs
     for (let url of fileUrls) {
       const fileResult = await this._downloadFile(url, token);
 
@@ -257,12 +352,10 @@ class ChatwootClient {
           filename: fileName,
         });
       } else {
-        // Manejar el caso en el que no puedas determinar la extensión.
         console.error(`No se pudo determinar la extensión para la URL: ${url}`);
       }
     }
 
-    // Agregar el tipo de mensaje y si es privado
     form.append("message_type", TypeUser);
     form.append("private", isPrivate.toString());
 
