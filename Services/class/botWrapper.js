@@ -156,15 +156,15 @@ class BotWrapper {
   static async processOutgoingMessage(data) {
     const { numberOrId, answer, ctxMessage } = data;
     const getAttributes = await this.chatwoot.getAttributes(numberOrId);
-    const getBlacklistSnapshot =
-      await this.botInstance.dynamicBlacklist.getBlacklistSnapshot();
+    // const getBlacklistSnapshot =
+    //   await this.botInstance.dynamicBlacklist.getBlacklistSnapshot();
 
     if (getAttributes === "On") {
       // Al encender el servidor, verificar si el número está en la lista negra
-      if (getBlacklistSnapshot.includes(numberOrId)) {
-        await this.botInstance.dynamicBlacklist.removeFromBlacklist(numberOrId);
-        console.log("Número eliminado. Verifica el archivo JSON nuevamente.");
-      }
+      // if (getBlacklistSnapshot.includes(numberOrId)) {
+      //   await this.botInstance.dynamicBlacklist.removeFromBlacklist(numberOrId);
+      //   console.log("Número eliminado. Verifica el archivo JSON nuevamente.");
+      // }
     }
 
     const Url_Adjunto = ctxMessage?.options?.media;
