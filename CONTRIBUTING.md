@@ -1,0 +1,5 @@
+```shell
+
+pnpm run build
+
+```
