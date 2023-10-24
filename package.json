@@ -1,5 +1,5 @@
 {
-  "name": "lib-chatwoot-adapter",
+  "name": "@bot-whatsapp-extensions/chatwoot",
   "version": "0.0.1",
   "description": "",
   "main": "lib/chatwoot.cjs",
@@ -14,7 +14,7 @@
     },
     {
       "name": "Carlos Moran",
-      "email": "carlos@carlos.com",
+      "email": "bl4ckdll@gmail.com",
       "url": "https://github.com/C4rlos-Mor4n"
     }
   ],
