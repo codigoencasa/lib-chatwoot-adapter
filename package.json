@@ -1,8 +1,8 @@
 {
   "name": "lib-chatwoot-adapter",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "lib/chatwoot.cjs",
   "scripts": {
     "build": "rollup --config ./rollup.config.js"
   },
