@@ -1,0 +1,5 @@
+- [] Readme
+- [] Instrucciones / Ejemplo de uso
+- [] Autores
+- [] CD/CI Release
+- [] Test Coverage > 90
