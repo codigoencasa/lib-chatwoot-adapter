@@ -1,25 +1,47 @@
 {
-  "name": "base-meta-memory",
+  "name": "lib-chatwoot-adapter",
   "version": "1.0.0",
   "description": "",
-  "main": "app.js",
+  "main": "index.js",
   "scripts": {
-    "pre-copy": "cd .. && npm run  copy.lib base-meta-memory",
-    "start": "node app.js"
+    "build": "rollup --config ./rollup.config.js"
   },
+  "contributors": [
+    {
+      "email": "leifer33@gmail.com",
+      "name": "Leifer Mendez",
+      "url": "https://leifermendez.github.io"
+    },
+    {
+      "name": "Carlos Moran",
+      "email": "carlos@carlos.com",
+      "url": "https://github.com/C4rlos-Mor4n"
+    }
+  ],
+  "files": [
+    "./lib/*"
+  ],
   "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@bot-whatsapp/bot": "0.0.197-alpha.0",
-    "@bot-whatsapp/cli": "latest",
-    "@bot-whatsapp/database": "latest",
-    "@bot-whatsapp/provider": "latest",
     "axios": "^1.2.1",
     "body-parser": "^1.20.1",
     "form-data": "^4.0.0",
     "mime": "^3.0.0",
-    "polka": "^0.5.2",
     "queue-promise": "^2.2.1"
   },
-  "author": "",
-  "license": "ISC"
+  "packageManager": "pnpm@8.6.12",
+  "engines": {
+    "node": ">=18",
+    "npm": "please-use-pnpm",
+    "yarn": "please-use-pnpm",
+    "pnpm": ">=8.6.12"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.0.1",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "rollup": "^4.1.4"
+  }
 }

@@ -3,10 +3,10 @@ const { EventEmitter } = require("events");
 const Queue = require("queue-promise");
 const express = require("express");
 const bodyParser = require("body-parser");
-const ChatwootClient = require("./chatwoot");
+const ChatwootClient = require("./client.class");
 
 // Clase que envuelve las funcionalidades del bot
-class BotWrapper {
+class ChatwootWrapper {
   static botInstance = null;
   static chatwoot = null;
   static events = new EventEmitter();
@@ -194,7 +194,7 @@ class BotWrapper {
     const app = express();
     app.use(bodyParser.json());
     app.post("/webhook-endpoint", (req, res) => {
-      BotWrapper.handleAgentEvent(req.body);
+      ChatwootWrapper.handleAgentEvent(req.body);
       res.status(200).send("Evento del agente recibido.");
     });
     app.listen(port, () =>
@@ -203,4 +203,4 @@ class BotWrapper {
   }
 }
 
-module.exports = BotWrapper;
+module.exports = ChatwootWrapper;
